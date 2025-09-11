@@ -50,19 +50,28 @@ def run_attack(ciphertext):
         final_columns[i % best_length] += char
         
     found_key = ""
-    MOST_COMMON_PT_LETTER = 'A'
+    pt_freqs = language_stats.PORTUGUESE_FREQUENCIES
+    pt_freq_vector = [pt_freqs.get(chr(ord('A')+j), 0) for j in range(26)]
 
     for i, column in enumerate(final_columns):
         if not column:
             continue
-        
-        col_frequencies = collections.Counter(column)
-        most_frequent_in_col = col_frequencies.most_common(1)[0][0]
-        
-        shift = (ord(most_frequent_in_col) - ord(MOST_COMMON_PT_LETTER)) % 26
-        key_char = chr(shift + ord('A'))
+        col_len = len(column)
+        col_freqs = collections.Counter(column)
+        col_freq_vector = [col_freqs.get(chr(ord('A')+j), 0)/col_len for j in range(26)]
+        best_shift = 0
+        best_score = float('-inf')
+        # Testa todos os deslocamentos possíveis
+        for shift in range(26):
+            shifted = col_freq_vector[-shift:] + col_freq_vector[:-shift]
+            # Score: produto escalar (correlação)
+            score = sum(a*b for a, b in zip(shifted, pt_freq_vector))
+            if score > best_score:
+                best_score = score
+                best_shift = shift
+        key_char = chr(best_shift + ord('A'))
         found_key += key_char
-        print(f"Column {i+1}: Most frequent is '{most_frequent_in_col}'. Inferred key char: '{key_char}'")
+        print(f"Column {i+1}: Best shift is {best_shift}. Inferred key char: '{key_char}'")
         
     print(f"\n--- 3. Reconstructing Key and Decrypting ---")
     print(f"Found Key: {found_key}")
